@@ -311,6 +311,20 @@ describe('normalizeSessionLog', () => {
     expect(out).not.toContain(ctx.cwd)
   })
 
+  it('scrubs a cwd spelling that full-width punctuation prefixes, like the fixture tokenizer', () => {
+    // CJK prose drives prompts that embed paths after a full-width colon or
+    // comma; those characters are not ASCII path boundaries, so the exact
+    // spelling match skips them and only the tokenizer's basename fallback
+    // (which the comparison side must mirror) can fold them.
+    const ev = JSON.stringify({
+      type: 'agent/inbox/spliced', seq: 2, time: 5,
+      data: { inserted: [{ id: 'm', role: 'user', content: [{ type: 'text', text: `账本目录：${ctx.cwd}/ledgers/x，先读` }] }] },
+    })
+    const out = normalizeSessionLog(`${header({ cwd: ctx.cwd })}\n${ev}\n`, ctx)
+    expect(out).toContain('{{cwd}}/ledgers/x')
+    expect(out).not.toContain(ctx.cwd)
+  })
+
   it('scrubs cwd at file URI and chained-punctuation boundaries in event data', () => {
     const ev = JSON.stringify({
       type: 'tool/result',

@@ -174,6 +174,21 @@ function scrubString(
   identityMode: 'legacy' | 'preserve',
 ): string {
   let out = replaceCwd(value, ctx, CWD)
+  // Full-width punctuation around an embedded path (CJK prompts embed the
+  // cwd after 「：」 and 「，」) defeats the exact-boundary match above, and
+  // symlink-resolved spellings never contained the header cwd at all. The
+  // fixture tokenizer folds those through a basename-suffix fallback
+  // (tokenizeFixtureString); mirror it here so comparison output can never
+  // keep a spelling the committed fixture already tokenized.
+  const basename = ctx.cwd.split(/[\\/]/).at(-1)
+  if (basename !== undefined && basename.length > 0) {
+    const absoluteCwd = new RegExp(
+      String.raw`(?:[A-Za-z]:)?[\\/](?:[^\\/\s<>"]+[\\/])*${escapeRegExp(basename)}`
+      + String.raw`(?=$|[\\/\s<>'"()\[\]{},;:!?=])`,
+      'g',
+    )
+    out = out.replace(absoluteCwd, CWD)
+  }
   // Filesystem APIs can report one directory with several spellings. Replace
   // every known spelling longest-first so a shorter alias cannot corrupt a
   // longer one before it is tokenized. macOS additionally symlinks
