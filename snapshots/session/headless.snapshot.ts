@@ -180,6 +180,10 @@ function contextOf(logs: readonly string[]): NormalizeContext {
   return {
     sessionIds: headers.flatMap(header => typeof header.id === 'string' ? [header.id] : []),
     cwd: typeof headers[0]?.cwd === 'string' ? headers[0].cwd : '\0missing-cwd\0',
+    // Multi-role scenarios give every harvested Session its own workspace
+    // (per-role workspaces); each log's header cwd is as volatile as its id
+    // and must fold to the same {{cwd}} token the fixture writer emits.
+    cwdAliases: [...new Set(headers.flatMap(header => typeof header.cwd === 'string' ? [header.cwd] : []))],
   }
 }
 
